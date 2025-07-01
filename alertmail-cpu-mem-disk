@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Email configuration
+RECIPIENT_EMAIL="saragroup@lti.com"
+SENDER_EMAIL="system_alerts@lti.com"
+SUBJECT="System Resource Alert"
+
+# Thresholds (adjust as needed)
+CPU_THRESHOLD=80 # Percentage
+MEM_THRESHOLD=80 # Percentage
+DISK_THRESHOLD=90 # Percentage
+
+# Get CPU usage
+CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'.' -f1)
+
+# Get Memory usage
+MEM_TOTAL=$(free -m | awk '/Mem:/ {print $2}')
+MEM_USED=$(free -m | awk '/Mem:/ {print $3}')
+MEM_USAGE=$((MEM_USED * 100 / MEM_TOTAL))
+
+# Get Disk usage (for root partition)
+DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | cut -d'%' -f1)
+
+# Check thresholds and send email if exceeded
+ALERT_MESSAGE=""
+
+if (( CPU_USAGE > CPU_THRESHOLD )); then
+    ALERT_MESSAGE+="CPU usage is high: ${CPU_USAGE}% (Threshold: ${CPU_THRESHOLD}%)\n"
+fi
+
+if (( MEM_USAGE > MEM_THRESHOLD )); then
+    ALERT_MESSAGE+="Memory usage is high: ${MEM_USAGE}% (Threshold: ${MEM_THRESHOLD}%)\n"
+fi
+
+if (( DISK_USAGE > DISK_THRESHOLD )); then
+    ALERT_MESSAGE+="Disk usage is high: ${DISK_USAGE}% (Threshold: ${DISK_THRESHOLD}%)\n"
+fi
+
+if [[ -n "$ALERT_MESSAGE" ]]; then
+    echo -e "System Resource Alert:\n\n${ALERT_MESSAGE}" | mailx -s "$SUBJECT" -r "$SENDER_EMAIL" "$RECIPIENT_EMAIL"
+fi
