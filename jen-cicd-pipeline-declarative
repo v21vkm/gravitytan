@@ -1,0 +1,29 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/v21vkm/gravitytan.git', branch: 'main'
+            }
+        }
+        stage('Build') {
+            steps {
+                //Add build commands here (e.g., npm install, mvn clean install)
+                echo 'Building the sara application...'
+            }
+        }
+        stage('Test') {
+            steps {
+                // Add test commands here (e.g., npm test, JUnit tests)
+                echo 'Running sarta tests...'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                // Add deployment commands 
+                echo 'Deploying the sara application...'
+            }
+        }
+    }
+}
