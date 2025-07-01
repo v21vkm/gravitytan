@@ -1,0 +1,50 @@
+#create  ec2 instance saraec2 with Nginix webserver
+
+resource "aws_instance" "saraec2" {
+  ami           	= "ami-a756b765c789d678"
+  instance_type 	= "r8g.large"
+  vpc_security_group_id =[aws_security_group.instance_id]
+  subnet_id = "${aws_subnet.sara-subnet-public-1.id}"
+
+user_data = << EOF
+
+    #!/bin/bash
+
+    yum update -y
+
+    yum install Nginx  -y
+
+    service Nginx  start
+
+    chkconfig Nginx  on
+
+    cd /var/www/html
+
+    echo "<html><h1>i create sara webbrowser and database</h1></html>" > index.html
+
+  EOF  
+
+user_data_replace_on_change=true
+
+tags = {
+    Name = "saratag"
+  }
+}
+
+#security group
+
+resource "aws_security_group" "sg1" {
+  name           = "ssg1"
+    ingress = {
+    from_port = "80"
+    to_port = "80"
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+ingress = {
+    from_port = "443"
+    to_port = "443"
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
