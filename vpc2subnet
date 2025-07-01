@@ -1,0 +1,177 @@
+# Terraform block
+
+terraform {
+  required_version = "~> 1.7.4"
+  required_providers {
+    aws = {
+        source = "hashicorp/aws"
+        version = "5.40.0"
+    }
+  }
+}
+
+# Provider block
+
+provider "aws" {
+  profile = "default"
+  region = "ap-south-1"
+}
+
+
+
+# creating vpc called  saravpc
+
+
+
+resource "aws_vpc" "saravpc" {
+    cidr_block = "10.0.0.0/16"
+    enable_dns_support = "true"
+    enable_dns_hostnames = "true"
+
+    tags = {
+        Name = "sara-vpc"
+    }
+}
+
+
+resource "aws_subnet" "sara-subnet-public-1" {
+    vpc_id = "${aws_vpc.sara-vpc.id}"
+    cidr_block = "10.0.1.0/24"
+    map_public_ip_on_launch = "true" # This is what makes it a public subnet
+    availability_zone = "us-west-1a"
+    tags = {
+        Name = "sara-subnet-public-1"
+    }
+}
+
+resource "aws_subnet" "sara-subnet-private-1" {
+    vpc_id = "${aws_vpc.sara-vpc.id}"
+    cidr_block = "10.0.2.0/24"
+    availability_zone = "us-west-1a"
+    tags = {
+        Name = "sara-subnet-private-1"
+    }
+}
+
+
+#network part
+
+# Add internet gateway
+
+resource "aws_internet_gateway" "sara-igw" {
+    vpc_id = "${aws_vpc.sara-vpc.id}"
+    tags = {
+        Name = "sara-igw"
+    }
+}
+
+# Public routes
+resource "aws_route_table" "sara-public-crt" {
+    vpc_id = "${aws_vpc.sara-vpc.id}"
+    
+    route {
+        cidr_block = "0.0.0.0/0" 
+        gateway_id = "${aws_internet_gateway.sara-igw.id}" 
+    }
+    
+    tags = {
+        Name = "sara-public-crt"
+    }
+}
+resource "aws_route_table_association" "sara-crta-public-subnet-1"{
+    subnet_id = "${aws_subnet.sara-subnet-public-1.id}"
+    route_table_id = "${aws_route_table.sara-public-crt.id}"
+}
+
+# Private routes
+resource "aws_route_table" "sara-private-crt" {
+    vpc_id = "${aws_vpc.sara-vpc.id}"
+    
+    route {
+        cidr_block = "0.0.0.0/0"
+        nat_gateway_id = "${aws_nat_gateway.sara-nat-gateway.id}" 
+    }
+    
+    tags = {
+        Name = "sara-private-crt"
+    }
+}
+resource "aws_route_table_association" "sara-crta-private-subnet-1"{
+    subnet_id = "${aws_subnet.sara-subnet-private-1.id}"
+    route_table_id = "${aws_route_table.sara-private-crt.id}"
+}
+
+# NAT Gateway to allow private subnet to connect internet
+
+#elastic -ip
+
+resource "aws_eip" "nat_gateway" {
+    vpc = true
+}
+
+resource "aws_nat_gateway" "sara-nat-gateway" {
+    allocation_id = aws_eip.nat_gateway.id
+    subnet_id     = "${aws_subnet.sara-subnet-public-1.id}"
+
+    tags = {
+    Name = "VPC-NAT"
+    }
+
+    # To ensure proper ordering, add Internet Gateway as dependency
+
+    depends_on = [aws_internet_gateway.sara-igw]
+}
+
+#Create security group next add security group.  limit SSH access to your IP address.
+
+# Security Group
+
+
+resource "aws_security_group" "ssg" {
+    vpc_id = "${aws_vpc.sara-vpc.id}"
+    
+    egress {
+        from_port = 0
+        to_port = 0
+        protocol = -1
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+    ingress {
+        from_port = 22
+        to_port = 22
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+    ingress {
+        from_port = 80
+        to_port = 80
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+    ingress {
+        from_port = 443
+        to_port = 443
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+     ingress = {
+    from_port = "8080"
+    to_port = "8080"
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    tags = {
+        Name = "ssg"
+    }
+}
+
+
+===================
+
+
+============
+terraform validate
+terraform plan
+terraform apply  --auto-approve
